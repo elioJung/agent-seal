@@ -6,6 +6,10 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    watch: {
+      usePolling: true,
+      interval: 1000,
+    },
     proxy: {
       '/v1': {
         // Docker 네트워크 내에서 server 컨테이너로 프록시
