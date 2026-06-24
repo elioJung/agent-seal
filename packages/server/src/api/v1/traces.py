@@ -40,6 +40,7 @@ async def list_traces(
                 "id": str(t.id),
                 "agent_id": t.agent_id,
                 "hash": t.hash,
+                "payload": t.payload,
                 "created_at": t.created_at.isoformat(),
             }
             for t in traces

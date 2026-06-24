@@ -221,7 +221,7 @@ export default function DashboardPage() {
                 rel="noopener noreferrer"
                 className="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
               >
-                검증 페이지 열기 →
+                공증 문서 열기 →
               </a>
               <button
                 onClick={() =>
@@ -271,40 +271,63 @@ export default function DashboardPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-500 border-b border-gray-800">
-                  <th className="text-left px-6 py-3 font-medium">Agent</th>
-                  <th className="text-left px-6 py-3 font-medium">Hash</th>
-                  <th className="text-left px-6 py-3 font-medium">생성 시간</th>
+                  <th className="text-left px-6 py-3 font-medium">Agent / 작업</th>
+                  <th className="text-left px-4 py-3 font-medium">모델 / 시간</th>
+                  <th className="text-left px-4 py-3 font-medium">Hash</th>
+                  <th className="text-left px-4 py-3 font-medium">생성 시간</th>
                   <th className="text-right px-6 py-3 font-medium">증명서</th>
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((trace) => (
-                  <tr
-                    key={trace.id}
-                    className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <span className="text-indigo-400 font-mono">{trace.agent_id}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <code className="text-xs text-gray-400 font-mono">
-                        {trace.hash.slice(0, 16)}…
-                      </code>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500 text-xs">
-                      {new Date(trace.created_at).toLocaleString('ko-KR')}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleIssue(trace.id)}
-                        disabled={issueMutation.isPending}
-                        className="text-xs bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-600/40 text-indigo-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        발급
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {data.items.map((trace) => {
+                  const payload = (trace as any).payload ?? {}
+                  return (
+                    <tr
+                      key={trace.id}
+                      className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <span className="text-indigo-400 font-mono text-xs">{trace.agent_id}</span>
+                        {payload.task_name && (
+                          <p className="text-gray-400 text-xs mt-0.5">{payload.task_name}</p>
+                        )}
+                        {payload.tags && payload.tags.length > 0 && (
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {payload.tags.map((tag: string) => (
+                              <span key={tag} className="text-[10px] bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-xs text-gray-500">
+                        {payload.model && <p className="font-mono text-gray-300">{payload.model}</p>}
+                        {payload.latency_ms != null && <p>{payload.latency_ms.toLocaleString()} ms</p>}
+                        {payload.usage?.total_tokens != null && (
+                          <p>{payload.usage.total_tokens.toLocaleString()} tokens</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <code className="text-xs text-gray-400 font-mono">
+                          {trace.hash.slice(0, 14)}…
+                        </code>
+                      </td>
+                      <td className="px-4 py-4 text-gray-500 text-xs">
+                        {new Date(trace.created_at).toLocaleString('ko-KR')}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleIssue(trace.id)}
+                          disabled={issueMutation.isPending}
+                          className="text-xs bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-600/40 text-indigo-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          발급
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}

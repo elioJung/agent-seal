@@ -28,6 +28,7 @@ async def verify_certificate(
             "id": str(trace.id),
             "agent_id": trace.agent_id,
             "hash": trace.hash,
+            "payload": trace.payload,
             "created_at": trace.created_at.isoformat(),
         },
     }
