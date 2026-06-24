@@ -1,4 +1,8 @@
-"""Langfuse 트레이스를 Notary data dict으로 변환하는 어댑터."""
+"""Langfuse 트레이스를 Notary data dict으로 변환하는 어댑터.
+
+Langfuse 4.x 호환: lf.api.trace.get(trace_id)가 반환하는
+TraceWithFullDetails 객체를 처리한다.
+"""
 import logging
 from typing import Any
 
@@ -6,35 +10,28 @@ logger = logging.getLogger(__name__)
 
 
 class LangfuseAdapter:
-    """Langfuse trace 객체를 Notary TracePayload data로 변환한다.
+    """Langfuse TraceWithFullDetails → Notary TracePayload data 변환.
 
-    Usage (Langfuse SDK 직접 사용 시):
-        adapter = LangfuseAdapter()
-        langfuse = Langfuse(...)
-        trace = langfuse.get_trace(trace_id)
-        payload = adapter.convert(trace)
-        await notary_client.send_trace(TracePayload(**payload))
-
-    Usage (LangChain/LangGraph 콜백 사용 시):
-        handler = CallbackHandler(...)
-        result = app.invoke(input, config={"callbacks": [handler]})
-        trace_id = handler.get_trace_id()
-        trace = langfuse.get_trace(trace_id)
-        payload = adapter.convert(trace)
+    Usage:
+        lf = Langfuse(public_key=..., secret_key=..., host=...)
+        trace = lf.api.trace.get(trace_id)
+        converted = LangfuseAdapter().convert(trace)
+        await notary_client.send_trace(TracePayload(
+            agent_id=converted["agent_id"],
+            data=converted["data"],
+        ))
     """
 
     def convert(self, langfuse_trace: Any) -> dict[str, Any]:
         observations = getattr(langfuse_trace, "observations", None) or []
-
-        # 첫 번째 Generation에서 모델·사용량 정보를 추출한다
         generations = [
             o for o in observations
             if getattr(o, "type", "").upper() == "GENERATION"
         ]
-        primary_gen = generations[0] if generations else None
 
-        usage = self._extract_usage(primary_gen)
+        usage = self._sum_usage(generations)
         latency_ms = self._extract_latency(langfuse_trace)
+        model = self._primary_model(generations)
         obs_summary = self._summarize_observations(observations)
 
         data: dict[str, Any] = {
@@ -42,19 +39,18 @@ class LangfuseAdapter:
             "task_name": getattr(langfuse_trace, "name", None),
             "input": getattr(langfuse_trace, "input", None),
             "output": getattr(langfuse_trace, "output", None),
-            "latency_ms": latency_ms,
             "tags": getattr(langfuse_trace, "tags", []) or [],
             "session_id": getattr(langfuse_trace, "session_id", None),
             "user_id": getattr(langfuse_trace, "user_id", None),
             "metadata": getattr(langfuse_trace, "metadata", None) or {},
         }
 
-        if primary_gen:
-            data["model"] = getattr(primary_gen, "model", None)
-
+        if latency_ms is not None:
+            data["latency_ms"] = latency_ms
+        if model:
+            data["model"] = model
         if usage:
             data["usage"] = usage
-
         if obs_summary:
             data["observations"] = obs_summary
 
@@ -63,32 +59,63 @@ class LangfuseAdapter:
             "data": {k: v for k, v in data.items() if v is not None},
         }
 
-    def _extract_usage(self, generation: Any) -> dict[str, Any] | None:
-        if generation is None:
+    def _primary_model(self, generations: list[Any]) -> str | None:
+        for gen in generations:
+            model = getattr(gen, "model", None)
+            if model:
+                return model
+        return None
+
+    def _sum_usage(self, generations: list[Any]) -> dict[str, Any] | None:
+        """모든 GENERATION 관측값의 토큰 사용량을 합산한다."""
+        input_t = output_t = total_t = 0
+        total_cost = 0.0
+        has_data = False
+
+        for gen in generations:
+            usage = getattr(gen, "usage", None)
+            if usage is None:
+                continue
+            inp = getattr(usage, "input", None) or 0
+            out = getattr(usage, "output", None) or 0
+            tot = getattr(usage, "total", None) or 0
+            cost = getattr(usage, "total_cost", None) or 0.0
+            if inp or out or tot:
+                has_data = True
+            input_t += inp
+            output_t += out
+            total_t += tot
+            total_cost += cost
+
+        if not has_data:
             return None
-        usage = getattr(generation, "usage", None)
-        if usage is None:
-            return None
-        result: dict[str, Any] = {}
-        for field, key in [
-            ("input", "input_tokens"),
-            ("output", "output_tokens"),
-            ("total", "total_tokens"),
-            ("total_cost", "total_cost"),
-        ]:
-            val = getattr(usage, field, None)
-            if val is not None:
-                result[key] = val
-        return result or None
+
+        result: dict[str, Any] = {
+            "input_tokens": input_t,
+            "output_tokens": output_t,
+            "total_tokens": total_t,
+        }
+        if total_cost:
+            result["total_cost"] = round(total_cost, 8)
+        return result
 
     def _extract_latency(self, trace: Any) -> int | None:
+        # Langfuse 4.x: trace.latency는 초 단위 float
+        latency = getattr(trace, "latency", None)
+        if latency is not None:
+            try:
+                return int(float(latency) * 1000)
+            except (TypeError, ValueError):
+                pass
+
+        # 3.x fallback: timestamp와 end_time의 차이
         start = getattr(trace, "timestamp", None)
         end = getattr(trace, "end_time", None) or getattr(trace, "updatedAt", None)
         if start and end:
             try:
                 return int((end - start).total_seconds() * 1000)
             except Exception:
-                return None
+                pass
         return None
 
     def _summarize_observations(self, observations: list[Any]) -> list[dict] | None:
@@ -97,8 +124,8 @@ class LangfuseAdapter:
         summary = []
         for obs in observations[:20]:
             item: dict[str, Any] = {
-                "name": getattr(obs, "name", ""),
-                "type": getattr(obs, "type", ""),
+                "name": getattr(obs, "name", "") or "",
+                "type": getattr(obs, "type", "") or "",
             }
             model = getattr(obs, "model", None)
             if model:

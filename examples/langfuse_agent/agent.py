@@ -3,6 +3,18 @@ Langfuse + Agent Notary 연동 데모 (Langfuse 4.x 호환)
 
 LangGraph 에이전트를 Langfuse로 트레이싱하고 Agent Notary에 자동 공증한다.
 
+[흐름]
+  에이전트 실행
+    -> Langfuse CallbackHandler: 트레이스를 Langfuse 대시보드에 전송
+    -> NotaryCollector: LangChain 콜백에서 model/tokens/latency 직접 수집
+    -> Notary 서버: 공증 페이로드 전송 (langfuse_trace_id 포함)
+
+  Langfuse(상세 관측) <--langfuse_trace_id--> Notary(불변 해시 증명)
+  두 시스템이 동일한 트레이스를 가리켜 교차 검증이 가능하다.
+
+  주의: Langfuse 4.x OTEL 파이프라인은 REST API 조회 전 10-30초 처리 지연이 있어
+        동기적 fetch 방식 대신 콜백 직접 수집 방식을 사용한다.
+
 실행:
   cd examples/langfuse_agent
   pip install -r requirements.txt
@@ -40,7 +52,7 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 NOTARY_API_KEY = os.environ["NOTARY_API_KEY"]
 NOTARY_URL = os.getenv("NOTARY_URL", "http://localhost:8000")
 
-# Langfuse 4.x: 전역 클라이언트를 명시적으로 초기화 (propagate_attributes가 이 클라이언트를 사용)
+# Langfuse 4.x: propagate_attributes와 get_client()가 사용할 전역 클라이언트 초기화
 Langfuse(
     public_key=LANGFUSE_PUBLIC_KEY,
     secret_key=LANGFUSE_SECRET_KEY,
@@ -48,9 +60,13 @@ Langfuse(
 )
 
 
-# ── LangChain 이벤트 수집기 (Notary용) ─────────────────────
+# ── LangChain 콜백 수집기 ────────────────────────────────────
 class NotaryCollector(BaseCallbackHandler):
-    """LangChain 콜백 이벤트에서 직접 트레이스 데이터를 수집한다."""
+    """LangChain 콜백 이벤트에서 model/tokens/latency를 직접 수집한다.
+
+    Langfuse REST API 조회에는 OTEL 처리 지연(10-30s)이 있어,
+    콜백 시점에 데이터를 직접 수집하는 방식을 사용한다.
+    """
 
     def __init__(self) -> None:
         super().__init__()
@@ -97,16 +113,13 @@ class NotaryCollector(BaseCallbackHandler):
     ) -> dict:
         latency_ms = int((time.monotonic() - self._start) * 1000) if self._start else None
 
-        # 출력에서 최종 텍스트 추출
         output_text = None
         if isinstance(self.chain_output, dict):
             msgs = self.chain_output.get("messages", [])
             if msgs:
                 last = msgs[-1]
                 output_text = getattr(last, "content", str(last))
-        if output_text is None:
-            output_text = str(self.chain_output)
-
+        output_text = output_text or str(self.chain_output)
         input_text = str(self.chain_input)
 
         data: dict = {"input": input_text, "output": output_text}
@@ -176,7 +189,6 @@ async def run(query: str, task_name: Optional[str] = None) -> str:
     print(f"  Query : {query[:60]}")
     print(f"{'='*55}")
 
-    # Langfuse 4.x: propagate_attributes로 trace 메타데이터 설정
     with propagate_attributes(
         trace_name=agent_name,
         session_id=session_id,
@@ -196,10 +208,9 @@ async def run(query: str, task_name: Optional[str] = None) -> str:
     output = result["messages"][-1].content
     print(f"  완료: {output[:120]}...")
 
-    # Langfuse flush
+    # Langfuse로 트레이스 비동기 전송
     print("\n[2/4] Langfuse 트레이스 전송 중...")
     get_client().flush()
-    await asyncio.sleep(2)
 
     langfuse_trace_id = langfuse_handler.last_trace_id
     if langfuse_trace_id:
@@ -208,7 +219,7 @@ async def run(query: str, task_name: Optional[str] = None) -> str:
     else:
         print("  [!] Langfuse trace_id 없음")
 
-    # Notary 전송
+    # Notary 공증 전송 (콜백으로 수집한 데이터 + langfuse_trace_id 포함)
     print("\n[3/4] Agent Notary로 공증 전송 중...")
     data = notary_collector.build_data(
         langfuse_trace_id=langfuse_trace_id,

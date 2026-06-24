@@ -8,36 +8,42 @@ _없음_
 
 ## 백로그
 
-### 2단계 — 서비스 (기능 구현)
-
-#### SDK (packages/sdk)
-- [ ] LangGraph 에이전트 통합 테스트 작성 (담당: AGENT_SDK)
-- [ ] `pip install notary-sdk` 한 줄 설치 검증 (담당: AGENT_SDK)
-
----
-
-### 3단계 — 개발 환경 검증 (Docker Dev)
-
-> **게이트**: 이 단계를 완전히 통과해야 4단계(운영 배포)로 진행한다.
-
-- [ ] 전체 시나리오 수동 검증 — 가입 → API Key 발급 → SDK 트레이스 전송 → 대시보드 조회 → 증명서 발급 → 검증 URL 접근 (담당: AGENT_BE)
-
----
-
 ### 4단계 — 운영 배포 (Production)
 
 > **의존성**: 3단계 개발 검증 완전 통과 후 진행한다.
 
-- [ ] ARM64 플랫폼 Docker 이미지 빌드 설정 (`--platform linux/arm64`) (담당: AGENT_BE)
-- [ ] `docker-compose.prod.yml` 작성 — 볼륨 영속화, 헬스체크, restart 정책 (담당: AGENT_BE)
-- [ ] Nginx 서브도메인 라우팅 설정 (담당: AGENT_BE)
-- [ ] 운영 환경변수 분리 (담당: AGENT_BE)
-- [ ] SDK `README.md` + PyPI 배포 준비 (담당: AGENT_SDK)
-- [ ] Oracle Free Tier 서버 최종 배포 및 확인 (담당: AGENT_BE)
+#### 인프라 (담당: AGENT_BE)
+- [ ] `docker-compose.prod.yml` 작성 — 볼륨 영속화, 헬스체크, restart 정책
+- [ ] Nginx 서브도메인 라우팅 설정 (api.도메인, app.도메인)
+- [ ] 운영 환경변수 분리 (`.env.prod`, 시크릿 관리)
+- [ ] Oracle Free Tier 서버 SSH 배포 확인
+
+#### GitHub Actions CI/CD (담당: AGENT_BE)
+- [ ] `.github/workflows/deploy.yml` — main 브랜치 push 시 자동 배포
+  - Docker 이미지 빌드 (ARM64 cross-compile)
+  - Docker Hub 또는 GHCR 이미지 푸시
+  - Oracle 서버 SSH → docker-compose pull & up
+- [ ] GitHub Secrets 설정 문서화
+  - `ORACLE_HOST`, `ORACLE_USER`, `ORACLE_SSH_KEY`
+  - `DOCKER_USERNAME`, `DOCKER_TOKEN` (또는 `GHCR_TOKEN`)
+  - 운영 환경변수 시크릿 목록
+
+#### SDK (담당: AGENT_SDK)
+- [ ] SDK `README.md` 작성 + PyPI 배포 준비 (`pip install notary-sdk`)
 
 ---
 
 ## 완료
+
+### 3단계 — 개발 환경 검증 ✅ 2026-06-24
+
+- [x] 전체 시나리오 수동 검증 — 가입 → API Key 발급 → SDK 트레이스 전송 → 대시보드 조회 → 증명서 발급 → 검증 URL 접근 (test_e2e.py + 수동 확인)
+- [x] Langfuse 4.x 연동 데모 에이전트 실행 검증 — gpt-4o-mini 실제 호출 + Langfuse 트레이스 + Notary 공증 전체 플로우 확인
+
+### 2단계 — 서비스 (기능 구현) — SDK ✅ 2026-06-24
+
+- [x] LangGraph + Langfuse 4.x 연동 데모 에이전트 작성 (`examples/langfuse_agent/`)
+- [x] `pip install -e ../../packages/sdk` 로컬 설치 검증
 
 ### 1단계 — 코어 (인프라 기반) ✅ 2026-06-24
 
