@@ -1,0 +1,63 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ARM64 크로스 빌드를 위한 QEMU 설정
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      # FastAPI 서버 이미지 빌드 (ARM64)
+      - name: Build and push server image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./packages/server
+          file: ./packages/server/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: dudwns0921/agent-notary-server:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # React 웹 이미지 빌드 (ARM64)
+      - name: Build and push web image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./packages/web
+          file: ./packages/web/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: dudwns0921/agent-notary-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Oracle 서버에 SSH 접속 후 새 이미지로 재시작
+      - name: Deploy to Oracle
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd ~/agent-seal
+            docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+            docker image prune -f
