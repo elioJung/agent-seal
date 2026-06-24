@@ -1,7 +1,13 @@
 from typing import Any
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.api.deps import get_current_api_key
+from src.db import get_db, get_redis
+from src.models.api_key import ApiKey
+from src.service import trace as trace_service
 
 router = APIRouter()
 
@@ -14,17 +20,31 @@ class TraceIngest(BaseModel):
 @router.post("", status_code=202)
 async def ingest_trace(
     body: TraceIngest,
-    x_api_key: str = Header(...),
+    api_key: ApiKey = Depends(get_current_api_key),
 ) -> dict:
-    # TODO Phase 2: API Key 검증 → Redis Streams에 발행
-    return {"message": "TODO: implement trace ingestion", "agent_id": body.agent_id}
+    result = await trace_service.ingest(get_redis(), api_key, body.agent_id, body.data)
+    return result
 
 
 @router.get("")
 async def list_traces(
-    x_api_key: str = Header(...),
     page: int = 1,
     limit: int = 20,
+    api_key: ApiKey = Depends(get_current_api_key),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
-    # TODO Phase 2: API Key 기반 트레이스 조회
-    return {"items": [], "total": 0, "page": page, "limit": limit}
+    traces, total = await trace_service.list_traces(db, api_key.id, page, limit)
+    return {
+        "items": [
+            {
+                "id": str(t.id),
+                "agent_id": t.agent_id,
+                "hash": t.hash,
+                "created_at": t.created_at.isoformat(),
+            }
+            for t in traces
+        ],
+        "total": total,
+        "page": page,
+        "limit": limit,
+    }

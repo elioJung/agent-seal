@@ -10,29 +10,9 @@ _없음_
 
 ### 2단계 — 서비스 (기능 구현)
 
-> **의존성**: 1단계 Docker 검증 통과 후 진행한다.
-> BE API 스펙 확정 후 FE가 연동한다.
-
-#### Backend (packages/server)
-- [ ] 사용자 가입 엔드포인트 구현 — `POST /v1/auth/register` (해시 비밀번호 + API Key 자동 발급) (담당: AGENT_BE)
-- [ ] 로그인 엔드포인트 구현 — `POST /v1/auth/login` (JWT 발급) (담당: AGENT_BE)
-- [ ] API Key 인증 미들웨어 실제 구현 — DB 조회 + is_active 검증 (담당: AGENT_BE)
-- [ ] 트레이스 수신 실제 구현 — API Key 검증 → SHA-256 해시 → Redis Streams 발행 (담당: AGENT_BE)
-- [ ] 공증 워커 실제 구현 — Redis 큐 소비 → DB 저장 (비동기 백그라운드 태스크) (담당: AGENT_BE)
-- [ ] 트레이스 목록 조회 API 실제 구현 — `GET /v1/traces` (페이지네이션) (담당: AGENT_BE)
-- [ ] 증명서 발급 API 실제 구현 — `POST /v1/certificates/{trace_id}` (HMAC-SHA256 서명) (담당: AGENT_BE)
-- [ ] Verify API 실제 구현 — `GET /v1/verify/{cert_id}` (인증 없이 공개) (담당: AGENT_BE)
-- [ ] Langfuse 연동 (담당: AGENT_BE)
-
 #### SDK (packages/sdk)
 - [ ] LangGraph 에이전트 통합 테스트 작성 (담당: AGENT_SDK)
 - [ ] `pip install notary-sdk` 한 줄 설치 검증 (담당: AGENT_SDK)
-
-#### Frontend (packages/web)
-- [ ] 대시보드 페이지 — API Key 입력 폼 + TanStack Query로 트레이스 로그 목록 (담당: AGENT_FE)
-- [ ] 증명서 발급 UI — 행별 발급 버튼 + 결과 다이얼로그 (담당: AGENT_FE)
-- [ ] 검증 페이지 — UUID 입력 + 제3자 검증 결과 표시 (담당: AGENT_FE)
-- [ ] react-hook-form + zod 폼 검증 (담당: AGENT_FE)
 
 ---
 
@@ -76,6 +56,26 @@ _없음_
 - [x] Tailwind CSS 설정 (담당: AGENT_FE)
 - [x] React Router 라우팅 설정 (담당: AGENT_FE)
 - [x] API 클라이언트 레이어 + 타입 정의 (담당: AGENT_FE)
+
+### 2단계 — 서비스 (기능 구현) ✅ 2026-06-24
+
+#### Backend (packages/server)
+- [x] 사용자 가입 엔드포인트 구현 — `POST /v1/auth/register` (담당: AGENT_BE)
+- [x] 로그인 엔드포인트 구현 — `POST /v1/auth/login` (JWT 발급) (담당: AGENT_BE)
+- [x] API Key 인증 미들웨어 구현 — DB 조회 + is_active 검증 (담당: AGENT_BE)
+- [x] 트레이스 수신 구현 — API Key 검증 → SHA-256 해시 → Redis Streams 발행 (담당: AGENT_BE)
+- [x] 공증 워커 구현 — Redis 큐 소비 → DB 저장 (비동기 백그라운드 태스크) (담당: AGENT_BE)
+- [x] 트레이스 목록 조회 API 구현 — `GET /v1/traces` (페이지네이션) (담당: AGENT_BE)
+- [x] 증명서 발급 API 구현 — `POST /v1/certificates/{trace_id}` (HMAC-SHA256 서명) (담당: AGENT_BE)
+- [x] Verify API 구현 — `GET /v1/verify/{cert_id}` (인증 없이 공개) (담당: AGENT_BE)
+- [x] bcrypt passlib→direct 교체 — bcrypt 4.x 호환성 수정 (담당: AGENT_BE)
+- [x] Docker dev 환경 HMR 폴링 설정 (담당: AGENT_BE)
+
+#### Frontend (packages/web)
+- [x] 대시보드 페이지 — API Key 입력 폼 + TanStack Query로 트레이스 로그 목록 (담당: AGENT_FE)
+- [x] 증명서 발급 UI — 행별 발급 버튼 + 결과 배너 (담당: AGENT_FE)
+- [x] 검증 페이지 — UUID 기반 제3자 검증 결과 표시 (담당: AGENT_FE)
+- [x] Vite 폴링 HMR 설정 (담당: AGENT_FE)
 
 ## 블로커
 _아직 없음_

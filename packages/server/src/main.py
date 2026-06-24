@@ -1,16 +1,22 @@
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.db import init_connections
 from src.api.v1 import router as v1_router
+from src.worker import notary_worker
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_connections()
+    worker_task = asyncio.create_task(notary_worker.run())
     yield
+    worker_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await worker_task
 
 
 app = FastAPI(

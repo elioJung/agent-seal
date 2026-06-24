@@ -1,6 +1,12 @@
 import uuid
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.api.deps import get_current_api_key
+from src.db import get_db
+from src.models.api_key import ApiKey
+from src.service import certificate as cert_service
 
 router = APIRouter()
 
@@ -8,7 +14,15 @@ router = APIRouter()
 @router.post("/{trace_id}", status_code=201)
 async def issue_certificate(
     trace_id: uuid.UUID,
-    x_api_key: str = Header(...),
+    api_key: ApiKey = Depends(get_current_api_key),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
-    # TODO Phase 2: 해시 서명 후 certificates 테이블에 저장
-    return {"message": "TODO: implement certificate issuance", "trace_id": str(trace_id)}
+    cert = await cert_service.issue(db, api_key, trace_id)
+    return {
+        "id": str(cert.id),
+        "trace_id": str(cert.trace_id),
+        "hash": cert.hash,
+        "signature": cert.signature,
+        "issued_at": cert.issued_at.isoformat(),
+        "verify_url": f"/verify/{cert.id}",
+    }
