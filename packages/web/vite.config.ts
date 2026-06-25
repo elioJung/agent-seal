@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
+  base: command === 'build' ? '/agent-seal/' : '/',
   server: {
     host: '0.0.0.0',
     port: 5173,
@@ -11,15 +12,11 @@ export default defineConfig({
       interval: 1000,
     },
     proxy: {
-      '/v1': {
-        // Docker 네트워크 내에서 server 컨테이너로 프록시
+      '/agent-seal-server': {
         target: 'http://server:8000',
-        changeOrigin: true,
-      },
-      '/health': {
-        target: 'http://server:8000',
+        rewrite: (path) => path.replace(/^\/agent-seal-server/, ''),
         changeOrigin: true,
       },
     },
   },
-})
+}))

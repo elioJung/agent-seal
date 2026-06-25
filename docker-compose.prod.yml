@@ -27,6 +27,8 @@ services:
 
   server:
     image: dudwns0921/agent-notary-server:latest
+    ports:
+      - "8001:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       REDIS_URL: redis://redis:6379/0
@@ -42,7 +44,7 @@ services:
   web:
     image: dudwns0921/agent-notary-web:latest
     ports:
-      - "80:80"
+      - "3002:80"
     depends_on:
       - server
     restart: unless-stopped

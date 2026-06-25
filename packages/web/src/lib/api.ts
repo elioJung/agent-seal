@@ -2,7 +2,7 @@ import axios from 'axios'
 import type { Certificate, PaginatedResponse, TraceLog, VerifyResult } from '../types'
 
 const api = axios.create({
-  baseURL: '/v1',
+  baseURL: '/agent-seal-server/v1',
   headers: { 'Content-Type': 'application/json' },
 })
 

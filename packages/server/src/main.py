@@ -23,6 +23,7 @@ app = FastAPI(
     title="Agent Notary",
     version="0.1.0",
     description="AI 에이전트 행동에 해시 서명된 불변 로그와 증명서를 발급하는 인프라 레이어",
+    root_path="/agent-seal-server",
     lifespan=lifespan,
 )
 
