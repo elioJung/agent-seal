@@ -34,6 +34,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
       APP_ENV: production
+      WEB_BASE_PATH: /agent-seal
     depends_on:
       db:
         condition: service_healthy

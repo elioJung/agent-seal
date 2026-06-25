@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_api_key
+from src.config import settings
 from src.db import get_db
 from src.models.api_key import ApiKey
 from src.service import certificate as cert_service
@@ -24,5 +25,5 @@ async def issue_certificate(
         "hash": cert.hash,
         "signature": cert.signature,
         "issued_at": cert.issued_at.isoformat(),
-        "verify_url": f"/verify/{cert.id}",
+        "verify_url": f"{settings.web_base_path}/verify/{cert.id}",
     }

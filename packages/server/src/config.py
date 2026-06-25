@@ -10,5 +10,6 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_host: str = "0.0.0.0"
     app_port: int = 8000
+    web_base_path: str = ""
 
 settings = Settings()
