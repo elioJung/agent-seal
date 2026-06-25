@@ -234,7 +234,12 @@ async def run(query: str, task_name: Optional[str] = None) -> str:
     await notary_client.send_trace(payload)
     print("  전송 완료!")
 
-    dashboard_url = NOTARY_URL.replace(":8000", ":5173") if ":8000" in NOTARY_URL else NOTARY_URL
+    if "agent-seal-server" in NOTARY_URL:
+        dashboard_url = NOTARY_URL.replace("agent-seal-server", "agent-seal")
+    elif ":8000" in NOTARY_URL:
+        dashboard_url = NOTARY_URL.replace(":8000", ":5173")
+    else:
+        dashboard_url = NOTARY_URL
     print(f"\n[4/4] 완료!")
     print(f"  Notary 대시보드 : {dashboard_url}")
     print(f"  API Key 입력 후 트레이스 확인 및 증명서 발급 가능\n")
