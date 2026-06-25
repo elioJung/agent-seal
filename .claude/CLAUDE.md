@@ -49,5 +49,5 @@ notary/
 - 작업 완료 시 TASKS.md의 해당 항목을 업데이트한다
 
 ## 주의사항
-- Oracle Free Tier ARM64 환경 — Docker 이미지 빌드 시 `--platform linux/arm64` 지정
+- Oracle Free Tier AMD64(x86_64) 환경 — Docker 이미지 빌드 시 `--platform linux/amd64` 지정
 - append-only 원칙 — 공증 로그는 절대 수정/삭제 없음
