@@ -216,7 +216,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-2 pt-1">
               <a
-                href={issuedCert.verify_url}
+                href={`${import.meta.env.BASE_URL}verify/${issuedCert.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
@@ -225,7 +225,7 @@ export default function DashboardPage() {
               </a>
               <button
                 onClick={() =>
-                  copyToClipboard(`${window.location.origin}${issuedCert.verify_url}`)
+                  copyToClipboard(`${window.location.origin}${import.meta.env.BASE_URL}verify/${issuedCert.id}`)
                 }
                 className="text-xs text-gray-500 hover:text-white"
               >
