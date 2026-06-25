@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.deps import get_current_api_key
 from src.db import get_db, get_redis
 from src.models.api_key import ApiKey
+from src.repository.certificate import CertificateRepository
 from src.service import trace as trace_service
 
 router = APIRouter()
@@ -34,18 +35,16 @@ async def list_traces(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     traces, total = await trace_service.list_traces(db, api_key.id, page, limit)
-    return {
-        "items": [
-            {
-                "id": str(t.id),
-                "agent_id": t.agent_id,
-                "hash": t.hash,
-                "payload": t.payload,
-                "created_at": t.created_at.isoformat(),
-            }
-            for t in traces
-        ],
-        "total": total,
-        "page": page,
-        "limit": limit,
-    }
+    cert_repo = CertificateRepository(db)
+    items = []
+    for t in traces:
+        cert = await cert_repo.get_by_trace_id(t.id)
+        items.append({
+            "id": str(t.id),
+            "agent_id": t.agent_id,
+            "hash": t.hash,
+            "payload": t.payload,
+            "created_at": t.created_at.isoformat(),
+            "certificate_id": str(cert.id) if cert else None,
+        })
+    return {"items": items, "total": total, "page": page, "limit": limit}

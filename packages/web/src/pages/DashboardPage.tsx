@@ -317,13 +317,19 @@ export default function DashboardPage() {
                         {new Date(trace.created_at).toLocaleString('ko-KR')}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleIssue(trace.id)}
-                          disabled={issueMutation.isPending}
-                          className="text-xs bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-600/40 text-indigo-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          발급
-                        </button>
+                        {trace.certificate_id ? (
+                          <span className="text-xs bg-green-900/20 border border-green-800/50 text-green-500 px-3 py-1.5 rounded-lg cursor-default">
+                            발급 완료
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleIssue(trace.id)}
+                            disabled={issueMutation.isPending}
+                            className="text-xs bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-600/40 text-indigo-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {issueMutation.isPending ? '발급 중…' : '발급'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )

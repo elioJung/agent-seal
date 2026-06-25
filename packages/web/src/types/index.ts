@@ -4,6 +4,7 @@ export interface TraceLog {
   payload: Record<string, unknown>
   hash: string
   created_at: string
+  certificate_id: string | null
 }
 
 export interface Certificate {
