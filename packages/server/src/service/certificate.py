@@ -1,6 +1,5 @@
 import uuid
 
-from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
@@ -28,7 +27,7 @@ async def issue(
 
     existing = await cert_repo.get_by_trace_id(trace_id)
     if existing:
-        raise HTTPException(409, "이미 증명서가 발급된 트레이스입니다")
+        return existing
 
     return await cert_repo.create(
         trace_id=trace_id,
